@@ -129,6 +129,11 @@ type BitVector (size:int) =
         (fst r.Bits.[0]) > 0 &&
         (snd r.Bits.[0]) = b
 
+    member r.EndsWith (b:Bit) =
+        r.Bits.Length > 0 &&
+        (fst r.Bits.[r.Bits.Length - 1]) > 0 &&
+        (snd r.Bits.[r.Bits.Length - 1]) = b
+
     member r.LeadingZeros =
         if r.isInvalid then
             0
@@ -1288,6 +1293,28 @@ type BitVector (size:int) =
             // CMW: There still a few special cases that we could add, e.g.
             // 11U...U11 * 00U...U00 will still allow us to propagate some bits.
             BitVector aBV.Length
+
+    static member bvModInverse (aBV:BitVector) =
+        assert(aBV.StartsWith(One))
+
+        //extended euclidean algorithm, ineffective version just for testing purposes
+        let rec extGCD (a : bigint) (b : bigint) =
+            let rec inner (r'', s'', t'') (r', s', t') =
+                let step () =
+                    let q = r'' / r'
+                    let r = r'' - q*r'
+                    let s = s'' - q*s'
+                    let t = t'' - q*t'
+                    (r, s, t)
+                if r' = 0I then (r'', s'', t'')
+                else inner (r', s', t') (step())
+
+            inner (a, 1I, 0I) (b, 0I, 1I)
+
+        let (gcd, k, _) = extGCD (aBV.toBigInt()) (BigInteger.Pow(2I, aBV.Length))
+
+        assert(gcd = BigInteger.One)
+        (BitVector.bigint2BV k aBV.Length)
 
 
     // CMW: When rewriter.hi_div == true, x/0 is an uninterpreted function. We don't want

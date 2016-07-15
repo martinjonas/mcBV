@@ -282,20 +282,47 @@ let ReverseMul (t:TheoryRelation) (rhs:BitVector) (pVal:Ref<BitVectorValuation>)
                             else
                                 (a1_arg, BitVector.Invalid) // conflict; 0 * ? = 1 is unsat.
                         else
-                            // a0 * ? = rhs can have multiple solutions for a1, if a0 and rhs
-                            // are not relatively prime, so we just return "no news".
-                            (0, BitVector.Invalid)
+                            let a0_is_odd = a0_val.EndsWith(Bit.One)
+                            let rhs_is_odd = rhs.EndsWith(Bit.One)
+
+                            match (rhs_is_odd, a0_is_odd) with
+                            | (_, true) ->
+                                //a0 is odd, and therefore has the multiplicative inverse
+                                //we can compute the result precisely
+                                let divisor = BitVector.bvMul rhs (BitVector.bvModInverse a0_val)
+                                (a1_arg, divisor)
+                            | (true, false) ->
+                                //conflict; even * ? = odd is unsat
+                                (a0_arg, BitVector.Invalid)
+                            | (false, false) ->
+                                //both a1 and rhs are even, multiple solutions are possible
+                                //just return "no news"
+                                (0, BitVector.Invalid)
     | (false, true)  -> // a0 * a1 = rhs --> a0 = rhs / a1
                         assert(not (t.isArgumentNumeral 0))
+
                         if (a1_is_zero) then
                             if rhs_is_zero then
                                 (0, BitVector.Invalid) // OK, nothing new
                             else
                                 (a0_arg, BitVector.Invalid) // conflict; ? * 0 = 1 is unsat
                         else
-                            // ? * a1 = rhs can have multiple solutions for a0, if a1 and rhs
-                            // are not relatively prime, so we just return "no news".
-                            (0, BitVector.Invalid)
+                            let rhs_is_odd = rhs.EndsWith(Bit.One)
+                            let a1_is_odd = a1_val.EndsWith(Bit.One)
+
+                            match (rhs_is_odd, a1_is_odd) with
+                            | (_, true) ->
+                                //a1 is odd, and therefore has the multiplicative inverse
+                                //we can compute the result precisely
+                                let divisor = BitVector.bvMul rhs (BitVector.bvModInverse a1_val)
+                                (a0_arg, divisor)
+                            | (true, false) ->
+                                //conflict; ? * even = odd is unsat
+                                (a1_arg, BitVector.Invalid)
+                            | (false, false) ->
+                                //both a1 and rhs are even, multiple solutions are possible
+                                //just return "no news"
+                                (0, BitVector.Invalid)
     | (false, false) -> // CMW: There's no implication, as there are at least two
                         // solutions, even for prime numbers.
                         (0, BitVector.Invalid)
